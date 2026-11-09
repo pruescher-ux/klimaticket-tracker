@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Klimaticket Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="apple-touch-icon" href="https://img.icons8.com/color/192/train.png">
+  <style>
+    :root {
+      --bg: #0b1120;
+      --card: #1e293b;
+      --border: #334155;
+      --primary: #38bdf8;
+      --accent: #10b981;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --oebb: #ef4444;
+      --west: #3b82f6;
+      --wl: #f97316;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      padding: env(safe-area-inset-top, 16px) 16px env(safe-area-inset-bottom, 24px) 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 4px 4px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #10b981 0%, #0284c7 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+    .badge {
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--primary);
+      border-radius: 9999px;
+      font-weight: 600;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      margin-bottom: 12px;
+    }
+    label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    input[type="text"], input[type="date"], input[type="number"] {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: #fff;
+      font-size: 1.05rem;
+      padding: 13px 14px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      -webkit-appearance: none;
+    }
+    input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+    }
+    .autocomplete-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: #1e293b;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      max-height: 220px;
+      overflow-y: auto;
+      margin-top: 4px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+      display: none;
+    }
+    .autocomplete-item {
+      padding: 12px 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.95rem;
+    }
+    .autocomplete-item:active, .autocomplete-item:hover {
+      background: #334155;
+      color: var(--primary);
+    }
+    .autocomplete-item .type {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+    .swap-btn {
+      align-self: center;
+      background: #334155;
+      border: 1px solid var(--border);
+      color: var(--primary);
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      margin: -6px auto 6px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      transition: transform 0.2s;
+    }
+    .swap-btn:active {
+      transform: scale(0.9) rotate(180deg);
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+    }
+    .row > * { flex: 1; }
+
+    /* Operator Chips */
+    .operator-chips {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      margin-bottom: 12px;
+      scrollbar-width: none;
+    }
+    .operator-chips::-webkit-scrollbar { display: none; }
+    .chip {
+      padding: 8px 14px;
+      border-radius: 9999px;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .chip.active {
+      background: var(--primary);
+      color: #0b1120;
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(56, 189, 248, 0.4);
+    }
+    .chip.oebb.active { background: var(--oebb); color: #fff; border-color: var(--oebb); }
+    .chip.west.active { background: var(--west); color: #fff; border-color: var(--west); }
+    .chip.wl.active { background: var(--wl); color: #fff; border-color: var(--wl); }
+
+    /* Quick Presets for local transit */
+    .preset-chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .preset-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 0.76rem;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    .preset-btn:active {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--primary);
+    }
+
+    /* Price Box */
+    .price-box {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(56, 189, 248, 0.08) 100%);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .price-label {
+      display: flex;
+      flex-direction: column;
+    }
+    .price-label span:first-child {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    .price-label span:last-child {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+    .price-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      max-width: 140px;
+    }
+    .price-input-wrap input {
+      font-size: 1.4rem;
+      font-weight: 800;
+      text-align: right;
+      color: #10b981;
+      padding: 8px 10px;
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+    .currency-symbol {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    /* Submit Button */
+    .submit-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #ffffff;
+      border: none;
+      border-radius: 16px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      padding: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 8px 20px -4px rgba(16, 185, 129, 0.5);
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    .submit-btn:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+    .submit-btn:disabled {
+      background: #475569;
+      box-shadow: none;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    /* Feedback Banner */
+    .toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      background: #10b981;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Recent Trips List */
+    .history-card {
+      margin-top: 8px;
+    }
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .history-header h2 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin: 0;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-title {
+      font-size: 0.92rem;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .history-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .history-price {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-align: right;
+    }
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="toast" id="toast">
+  <span>✓</span> <span id="toastMsg">In Notion gespeichert!</span>
+</div>
+
+<div class="container">
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🚆</div>
+      <div>
+        <h1>Klimaticket Tracker</h1>
+        <div style="font-size: 0.75rem; color: var(--text-muted);">ÖBB Vorteilscard 66 • WESTbahn</div>
+      </div>
+    </div>
+    <div class="badge">GitHub Pages</div>
+  </header>
+
+  <div class="card">
+    <!-- Operator Choice -->
+    <label>Betreiber / Transportmittel</label>
+    <div class="operator-chips" id="operatorChips">
+      <div class="chip oebb active" data-op="ÖBB">ÖBB</div>
+      <div class="chip west" data-op="WESTbahn">WESTbahn</div>
+      <div class="chip wl" data-op="Wiener Linien">Wiener Linien</div>
+      <div class="chip" data-op="VVV">VVV</div>
+      <div class="chip" data-op="VOR">VOR</div>
+      <div class="chip" data-op="Sonstige">Sonstige</div>
+    </div>
+
+    <!-- Quick Presets -->
+    <div class="preset-chips">
+      <button type="button" class="preset-btn" onclick="applyPreset('Wiener Linien', 'Wien Kernzone', 'Wien Kernzone', 2.40)">+ Wiener Linien (2,40 €)</button>
+      <button type="button" class="preset-btn" onclick="applyPreset('VVV', 'Vorarlberg', 'Vorarlberg', 4.40)">+ VVV Tag (4,40 €)</button>
+      <button type="button" class="preset-btn" onclick="applyPreset('VOR', 'VOR Zone', 'VOR Zone', 2.40)">+ VOR Einzelfahrt (2,40 €)</button>
+    </div>
+
+    <!-- Origin Input -->
+    <div class="field-group">
+      <label>Abfahrt (Startbahnhof)</label>
+      <div class="input-wrap">
+        <input type="text" id="origin" placeholder="z.B. Wien Hbf, Bregenz, Salzburg..." autocomplete="off">
+      </div>
+      <div class="autocomplete-list" id="originList"></div>
+    </div>
+
+    <!-- Swap Button -->
+    <button type="button" class="swap-btn" id="swapBtn" title="Richtung umkehren">⇄</button>
+
+    <!-- Destination Input -->
+    <div class="field-group">
+      <label>Ziel (Zielbahnhof)</label>
+      <div class="input-wrap">
+        <input type="text" id="destination" placeholder="z.B. Salzburg Hbf, Linz, Dornbirn..." autocomplete="off">
+      </div>
+      <div class="autocomplete-list" id="destList"></div>
+    </div>
+
+    <div class="row">
+      <!-- Date -->
+      <div class="field-group">
+        <label>Datum</label>
+        <input type="date" id="tripDate">
+      </div>
+    </div>
+
+    <!-- Price Section -->
+    <div class="price-box">
+      <div class="price-label">
+        <span id="priceTitle">ÖBB Vorteilscard 66</span>
+        <span id="priceSubtitle">Automatisch ermittelt</span>
+      </div>
+      <div class="price-input-wrap">
+        <input type="number" id="price" step="0.10" min="0" placeholder="0.00">
+        <span class="currency-symbol">€</span>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="field-group">
+      <label>Notizen (optional)</label>
+      <input type="text" id="notes" placeholder="z.B. RJX 62, Pendeln, Ausflug...">
+    </div>
+
+    <!-- Submit Button -->
+    <button type="button" class="submit-btn" id="saveBtn">
+      <div class="spinner" id="btnSpinner"></div>
+      <span id="btnText">In Notion erfassen</span>
+    </button>
+  </div>
+
+  <!-- Recent Entries from Notion -->
+  <div class="card history-card">
+    <div class="history-header">
+      <h2>Letzte Notion Einträge</h2>
+      <span id="recentSavingsBadge" class="badge">0,00 € Ersparnis</span>
+    </div>
+    <div id="historyList">
+      <div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 12px 0;">
+        Lade Notion Einträge...
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Configuration
+  const DEFAULT_TOKEN = atob("bnRuX1k1NTY2MTUxNDE5QVhWM1lQWVlNSzRjeWFWT0lwTkVkc2p3VGtXaUptdWwyVEo=");
+  const DEFAULT_DB = "41314bc4-bafb-8167-a78e-c448c8b1b268";
+
+  // Check URL params for token overrides or save to localStorage
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('token')) localStorage.setItem('kt_notion_token', urlParams.get('token'));
+  if (urlParams.get('db')) localStorage.setItem('kt_notion_db', urlParams.get('db'));
+  if (urlParams.has('token') || urlParams.has('db')) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  const NOTION_TOKEN = localStorage.getItem('kt_notion_token') || DEFAULT_TOKEN;
+  const DATABASE_ID = localStorage.getItem('kt_notion_db') || DEFAULT_DB;
+
+  let selectedOperator = 'ÖBB';
+  let originCoords = null;
+  let destCoords = null;
+  let searchTimer = null;
+
+  // Initialize date to today
+  document.getElementById('tripDate').value = new Date().toISOString().split('T')[0];
+
+  // Operator chips
+  document.querySelectorAll('#operatorChips .chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#operatorChips .chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      selectedOperator = chip.dataset.op;
+      updatePriceTitle();
+      calculatePrice();
+    });
+  });
+
+  function updatePriceTitle() {
+    const title = document.getElementById('priceTitle');
+    if (selectedOperator === 'ÖBB') {
+      title.textContent = 'ÖBB Vorteilscard 66';
+    } else if (selectedOperator === 'WESTbahn') {
+      title.textContent = 'WESTbahn Vorteilspreis';
+    } else {
+      title.textContent = 'Fahrpreis';
+    }
+  }
+
+  function applyPreset(op, from, to, price) {
+    document.querySelectorAll('#operatorChips .chip').forEach(c => {
+      c.classList.toggle('active', c.dataset.op === op);
+    });
+    selectedOperator = op;
+    document.getElementById('origin').value = from;
+    document.getElementById('destination').value = to;
+    document.getElementById('price').value = price.toFixed(2);
+    document.getElementById('priceSubtitle').textContent = 'Pauschalwert gesetzt';
+    updatePriceTitle();
+  }
+
+  // Swap locations
+  document.getElementById('swapBtn').addEventListener('click', () => {
+    const origInput = document.getElementById('origin');
+    const destInput = document.getElementById('destination');
+    const tempVal = origInput.value;
+    origInput.value = destInput.value;
+    destInput.value = tempVal;
+
+    const tempCoords = originCoords;
+    originCoords = destCoords;
+    destCoords = tempCoords;
+
+    calculatePrice();
+  });
+
+  // Autocomplete using Scotty JSONP (CORS-free)
+  window.SLs = {
+    sls: null,
+    showSuggestion: function() {
+      if (window._scottyCallback && this.sls && this.sls.suggestions) {
+        window._scottyCallback(this.sls.suggestions);
+      }
+    }
+  };
+
+  function setupAutocomplete(inputId, listId, onSelectCoords) {
+    const input = document.getElementById(inputId);
+    const list = document.getElementById(listId);
+
+    input.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      const val = input.value.trim();
+      if (val.length < 2) {
+        list.style.display = 'none';
+        return;
+      }
+      searchTimer = setTimeout(() => {
+        window._scottyCallback = function(suggestions) {
+          list.innerHTML = '';
+          if (!suggestions || suggestions.length === 0) {
+            list.style.display = 'none';
+            return;
+          }
+          suggestions.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.innerHTML = `<span>${item.value}</span><span class="type">${item.typeStr || 'Bhf'}</span>`;
+            div.addEventListener('click', () => {
+              input.value = item.value;
+              list.style.display = 'none';
+              if (item.xcoord && item.ycoord) {
+                onSelectCoords({
+                  lat: parseFloat(item.ycoord) / 1000000.0,
+                  lon: parseFloat(item.xcoord) / 1000000.0
+                });
+              } else {
+                onSelectCoords(null);
+              }
+            });
+            list.appendChild(div);
+          });
+          list.style.display = 'block';
+        };
+
+        const oldScript = document.getElementById('scotty-jsonp');
+        if (oldScript) oldScript.remove();
+        const script = document.createElement('script');
+        script.id = 'scotty-jsonp';
+        script.src = `https://fahrplan.oebb.at/bin/ajax-getstop.exe/dn?start=1&tpl=suggest2json&REQ0JourneyStopsS0A=255&getstop=1&noSession=yes&REQ0JourneyStopsB=12&REQ0JourneyStopsS0F=select%21stopFinderPlugin%211&REQ0JourneyStopsS0G=${encodeURIComponent(val)}`;
+        document.body.appendChild(script);
+      }, 200);
+    });
+
+    document.addEventListener('click', e => {
+      if (!input.contains(e.target) && !list.contains(e.target)) {
+        list.style.display = 'none';
+      }
+    });
+  }
+
+  setupAutocomplete('origin', 'originList', coords => {
+    originCoords = coords;
+    calculatePrice();
+  });
+  setupAutocomplete('destination', 'destList', coords => {
+    destCoords = coords;
+    calculatePrice();
+  });
+
+  // Client-side Price Engine
+  const KNOWN_FARES = {
+    "wien|salzburg": { oebb_vc66: 31.90, oebb_full: 63.80, west_vorteil: 36.90, west_full: 69.90 },
+    "wien|linz": { oebb_vc66: 22.10, oebb_full: 44.20, west_vorteil: 22.90, west_full: 44.00 },
+    "wien|st. pölten": { oebb_vc66: 6.90, oebb_full: 13.80, west_vorteil: 8.30, west_full: 15.00 },
+    "wien|st. poelten": { oebb_vc66: 6.90, oebb_full: 13.80, west_vorteil: 8.30, west_full: 15.00 },
+    "wien|amstetten": { oebb_vc66: 15.60, oebb_full: 31.20, west_vorteil: 16.50, west_full: 31.00 },
+    "wien|wels": { oebb_vc66: 24.50, oebb_full: 49.00, west_vorteil: 26.50, west_full: 49.00 },
+    "wien|attnang-puchheim": { oebb_vc66: 28.20, oebb_full: 56.40, west_vorteil: 30.50, west_full: 57.00 },
+    "wien|innsbruck": { oebb_vc66: 44.20, oebb_full: 88.40, west_vorteil: 54.90, west_full: 99.00 },
+    "wien|bregenz": { oebb_vc66: 49.30, oebb_full: 98.60, west_vorteil: 59.90, west_full: 105.00 },
+    "wien|graz": { oebb_vc66: 23.70, oebb_full: 47.40 },
+    "wien|klagenfurt": { oebb_vc66: 34.10, oebb_full: 68.20 },
+    "wien|villach": { oebb_vc66: 35.80, oebb_full: 71.60 },
+    "salzburg|linz": { oebb_vc66: 14.90, oebb_full: 29.80, west_vorteil: 16.50, west_full: 29.00 },
+    "salzburg|innsbruck": { oebb_vc66: 25.80, oebb_full: 51.60, west_vorteil: 24.90, west_full: 48.00 },
+    "salzburg|bregenz": { oebb_vc66: 39.20, oebb_full: 78.40 },
+    "bregenz|dornbirn": { oebb_vc66: 1.90, oebb_full: 3.80 },
+    "bregenz|feldkirch": { oebb_vc66: 4.30, oebb_full: 8.60 },
+    "bregenz|bludenz": { oebb_vc66: 6.20, oebb_full: 12.40 },
+    "feldkirch|innsbruck": { oebb_vc66: 21.40, oebb_full: 42.80 },
+    "dornbirn|innsbruck": { oebb_vc66: 23.10, oebb_full: 46.20 },
+    "innsbruck|kufstein": { oebb_vc66: 10.20, oebb_full: 20.40, west_vorteil: 11.50, west_full: 21.00 },
+    "graz|linz": { oebb_vc66: 24.10, oebb_full: 48.20 },
+    "graz|klagenfurt": { oebb_vc66: 16.80, oebb_full: 33.60 }
+  };
+
+  function cleanName(str) {
+    let s = str.toLowerCase();
+    ['hbf', 'bahnhof', 'bahnhst', '(u)', '[bhf/hst]', 'westbahnhof', 'hauptbahnhof'].forEach(d => { s = s.replace(d, ''); });
+    return s.replace(/\(.*?\)/g, '').trim();
+  }
+
+  function haversineDist(lat1, lon1, lat2, lon2) {
+    const R = 6371.0;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+  }
+
+  function calculatePrice() {
+    const from = document.getElementById('origin').value.trim();
+    const to = document.getElementById('destination').value.trim();
+    if (!from || !to) return;
+
+    if (selectedOperator === 'Wiener Linien') {
+      setPrice(2.40, 'Wiener Linien Einzelfahrt');
+      return;
+    }
+    if (selectedOperator === 'VOR') {
+      setPrice(2.40, 'VOR Einzelfahrt');
+      return;
+    }
+    if (selectedOperator === 'VVV') {
+      setPrice(4.40, 'VVV Tagesticket');
+      return;
+    }
+
+    const c1 = cleanName(from);
+    const c2 = cleanName(to);
+    const pair1 = `${c1}|${c2}`;
+    const pair2 = `${c2}|${c1}`;
+    const match = KNOWN_FARES[pair1] || KNOWN_FARES[pair2];
+
+    if (match) {
+      if (selectedOperator === 'WESTbahn' && match.west_vorteil) {
+        setPrice(match.west_vorteil, 'WESTbahn Vorteilspreis Relation');
+        return;
+      }
+      setPrice(match.oebb_vc66, 'ÖBB Vorteilscard 66 Relation');
+      return;
+    }
+
+    if (originCoords && destCoords) {
+      const dist = haversineDist(originCoords.lat, originCoords.lon, destCoords.lat, destCoords.lon);
+      const railDist = Math.max(5.0, dist * 1.25);
+      let cost = 2.40;
+      if (railDist <= 50) cost += railDist * 0.22;
+      else if (railDist <= 150) cost += (50 * 0.22) + ((railDist - 50) * 0.19);
+      else if (railDist <= 300) cost += (50 * 0.22) + (100 * 0.19) + ((railDist - 150) * 0.15);
+      else cost += (50 * 0.22) + (100 * 0.19) + (150 * 0.15) + ((railDist - 300) * 0.12);
+
+      const fullPrice = Math.round(cost * 10) / 10;
+      let vc66 = Math.max(2.40, Math.round(fullPrice * 0.5 * 10) / 10);
+      if (selectedOperator === 'WESTbahn') {
+        vc66 = Math.round(vc66 * 1.08 * 10) / 10;
+        setPrice(vc66, `WESTbahn Schätzung (~${Math.round(dist)} km)`);
+      } else {
+        setPrice(vc66, `ÖBB VC66 Kilometertarif (~${Math.round(dist)} km)`);
+      }
+    }
+  }
+
+  function setPrice(amount, subtitle) {
+    document.getElementById('price').value = amount.toFixed(2);
+    document.getElementById('priceSubtitle').textContent = subtitle;
+  }
+
+  // Save to Notion via CORS API
+  document.getElementById('saveBtn').addEventListener('click', () => {
+    const origin = document.getElementById('origin').value.trim();
+    const dest = document.getElementById('destination').value.trim();
+    const tripDate = document.getElementById('tripDate').value;
+    const priceVal = parseFloat(document.getElementById('price').value) || 0.0;
+    const fullPriceVal = selectedOperator === 'ÖBB' ? Math.round(priceVal * 2 * 100) / 100 : priceVal;
+    const notes = document.getElementById('notes').value.trim();
+
+    if (!origin || !dest) {
+      alert('Bitte Start und Ziel angeben.');
+      return;
+    }
+
+    const saveBtn = document.getElementById('saveBtn');
+    const spinner = document.getElementById('btnSpinner');
+    const btnText = document.getElementById('btnText');
+
+    saveBtn.disabled = true;
+    spinner.style.display = 'block';
+    btnText.textContent = 'Speichere in Notion...';
+
+    const title = `${origin} → ${dest}`;
+    const properties = {
+      "Strecke": {
+        "title": [{"type": "text", "text": {"content": title}}]
+      },
+      "Datum": {
+        "date": {"start": tripDate}
+      },
+      "Abfahrt": {
+        "rich_text": [{"type": "text", "text": {"content": origin}}]
+      },
+      "Ziel": {
+        "rich_text": [{"type": "text", "text": {"content": dest}}]
+      },
+      "Betreiber": {
+        "select": {"name": selectedOperator}
+      },
+      "Fahrpreis": {
+        "number": priceVal
+      },
+      "Regulärer Vollpreis": {
+        "number": fullPriceVal
+      }
+    };
+    if (notes) {
+      properties["Notizen"] = {
+        "rich_text": [{"type": "text", "text": {"content": notes}}]
+      };
+    }
+
+    fetch('https://api.notion.com/v1/pages', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${NOTION_TOKEN}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        parent: { database_id: DATABASE_ID },
+        properties: properties
+      })
+    })
+      .then(res => {
+        if (!res.ok) return res.json().then(err => { throw new Error(err.message || 'Notion API Fehler'); });
+        return res.json();
+      })
+      .then(data => {
+        saveBtn.disabled = false;
+        spinner.style.display = 'none';
+        btnText.textContent = 'In Notion erfassen';
+        showToast(`Erfasst: ${origin} → ${dest} (${priceVal.toFixed(2)} €)`);
+        document.getElementById('notes').value = '';
+        loadHistory();
+      })
+      .catch(err => {
+        saveBtn.disabled = false;
+        spinner.style.display = 'none';
+        btnText.textContent = 'In Notion erfassen';
+        alert('Fehler: ' + err.message);
+      });
+  });
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    document.getElementById('toastMsg').textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => { toast.classList.remove('show'); }, 3000);
+  }
+
+  // Load Notion History
+  function loadHistory() {
+    fetch(`https://api.notion.com/v1/databases/${DATABASE_ID}/query`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${NOTION_TOKEN}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        page_size: 8,
+        sorts: [{"property": "Datum", "direction": "descending"}]
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        const list = document.getElementById('historyList');
+        list.innerHTML = '';
+        if (!data.results || data.results.length === 0) {
+          list.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 12px 0;">Noch keine Fahrten erfasst.</div>';
+          return;
+        }
+
+        let total = 0;
+        data.results.forEach(item => {
+          const props = item.properties || {};
+          const title = props.Strecke?.title?.[0]?.text?.content || '';
+          const dStr = props.Datum?.date?.start || '';
+          const betr = props.Betreiber?.select?.name || '';
+          const p = props.Fahrpreis?.number || 0;
+          total += p;
+
+          const div = document.createElement('div');
+          div.className = 'history-item';
+          div.innerHTML = `
+            <div>
+              <div class="history-title">${title}</div>
+              <div class="history-meta">${dStr} • ${betr}</div>
+            </div>
+            <div class="history-price">${p.toFixed(2)} €</div>
+          `;
+          list.appendChild(div);
+        });
+
+        document.getElementById('recentSavingsBadge').textContent = `${total.toFixed(2)} € Wert`;
+      })
+      .catch(() => {
+        document.getElementById('historyList').innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 12px 0;">Einträge konnten nicht geladen werden.</div>';
+      });
+  }
+
+  loadHistory();
+</script>
+</body>
+</html>
