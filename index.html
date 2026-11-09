@@ -751,37 +751,14 @@
     calculatePrice();
   });
 
-  // Current Official 2026 Fare Table (Standard Vollpreis & VC66 50%)
-  const KNOWN_FARES = {
-    "wien|salzburg": { oebb_vc66: 33.90, oebb_full: 67.80, west_vorteil: 36.90, west_full: 69.90 },
-    "wien|linz": { oebb_vc66: 23.40, oebb_full: 46.80, west_vorteil: 23.90, west_full: 45.90 },
-    "wien|st. pölten": { oebb_vc66: 7.30, oebb_full: 14.60, west_vorteil: 8.90, west_full: 16.00 },
-    "wien|st. poelten": { oebb_vc66: 7.30, oebb_full: 14.60, west_vorteil: 8.90, west_full: 16.00 },
-    "wien|amstetten": { oebb_vc66: 16.50, oebb_full: 33.00, west_vorteil: 17.50, west_full: 33.00 },
-    "wien|wels": { oebb_vc66: 25.90, oebb_full: 51.80, west_vorteil: 27.90, west_full: 52.00 },
-    "wien|attnang-puchheim": { oebb_vc66: 29.90, oebb_full: 59.80, west_vorteil: 31.90, west_full: 60.00 },
-    "wien|innsbruck": { oebb_vc66: 46.80, oebb_full: 93.60, west_vorteil: 57.90, west_full: 105.00 },
-    "wien|bregenz": { oebb_vc66: 52.20, oebb_full: 104.40, west_vorteil: 63.90, west_full: 112.00 },
-    "wien|graz": { oebb_vc66: 25.10, oebb_full: 50.20 },
-    "wien|klagenfurt": { oebb_vc66: 36.10, oebb_full: 72.20 },
-    "wien|villach": { oebb_vc66: 37.90, oebb_full: 75.80 },
-    "salzburg|linz": { oebb_vc66: 15.80, oebb_full: 31.60, west_vorteil: 17.50, west_full: 31.00 },
-    "salzburg|innsbruck": { oebb_vc66: 27.30, oebb_full: 54.60, west_vorteil: 26.90, west_full: 51.00 },
-    "salzburg|bregenz": { oebb_vc66: 41.50, oebb_full: 83.00 },
-    "bregenz|dornbirn": { oebb_vc66: 2.10, oebb_full: 4.20 },
-    "bregenz|feldkirch": { oebb_vc66: 4.60, oebb_full: 9.20 },
-    "bregenz|bludenz": { oebb_vc66: 6.60, oebb_full: 13.20 },
-    "feldkirch|innsbruck": { oebb_vc66: 22.70, oebb_full: 45.40 },
-    "dornbirn|innsbruck": { oebb_vc66: 24.50, oebb_full: 49.00 },
-    "innsbruck|kufstein": { oebb_vc66: 10.80, oebb_full: 21.60, west_vorteil: 12.20, west_full: 22.00 },
-    "graz|linz": { oebb_vc66: 25.50, oebb_full: 51.00 },
-    "graz|klagenfurt": { oebb_vc66: 17.80, oebb_full: 35.60 }
-  };
-
   function cleanName(str) {
     let s = str.toLowerCase();
-    ['hbf', 'bahnhof', 'bahnhst', '(u)', '[bhf/hst]', 'westbahnhof', 'hauptbahnhof'].forEach(d => { s = s.replace(d, ''); });
-    return s.replace(/\(.*?\)/g, '').trim();
+    ['hauptbahnhof', 'westbahnhof', 'bahnhof', 'bahnhst', 'hbf', '(u)', '[bhf/hst]', '/donau', '(donau)', ' am wörthersee', ' in tirol', ' nö', ' oö'].forEach(d => {
+      s = s.split(d).join('');
+    });
+    s = s.replace(/\(.*?\)/g, '');
+    s = s.replace(/[^a-zäöüß]/g, ' ');
+    return s.trim();
   }
 
   function haversineDist(lat1, lon1, lat2, lon2) {
@@ -797,23 +774,106 @@
   function getFareForRoute(from, to, op) {
     const c1 = cleanName(from);
     const c2 = cleanName(to);
-    const match = KNOWN_FARES[`${c1}|${c2}`] || KNOWN_FARES[`${c2}|${c1}`];
+    const has = (k1, k2) => (c1.includes(k1) && c2.includes(k2)) || (c1.includes(k2) && c2.includes(k1));
 
-    if (match) {
-      if (op === 'WESTbahn' && match.west_vorteil) {
-        return { price: match.west_vorteil, full: match.west_full, source: 'WESTbahn Vorteilspreis' };
-      }
-      return { price: match.oebb_vc66, full: match.oebb_full, source: 'ÖBB Vorteilscard 66' };
+    // Exact Official Relations (Vollpreis & 50% Vorteilscard)
+    if (has('wien', 'linz')) {
+      return op === 'WESTbahn'
+        ? { price: 23.90, full: 45.90, source: 'WESTbahn Vorteilspreis' }
+        : { price: 21.30, full: 42.60, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('wien', 'salzburg')) {
+      return op === 'WESTbahn'
+        ? { price: 36.90, full: 69.90, source: 'WESTbahn Vorteilspreis' }
+        : { price: 33.90, full: 67.80, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('wien', 'st pölten') || has('wien', 'poelten') || has('wien', 'st  pölten')) {
+      return op === 'WESTbahn'
+        ? { price: 8.90, full: 16.00, source: 'WESTbahn Vorteilspreis' }
+        : { price: 7.50, full: 15.00, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('wien', 'amstetten')) {
+      return op === 'WESTbahn'
+        ? { price: 17.50, full: 33.00, source: 'WESTbahn Vorteilspreis' }
+        : { price: 16.50, full: 33.00, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('wien', 'wels')) {
+      return op === 'WESTbahn'
+        ? { price: 26.50, full: 50.00, source: 'WESTbahn Vorteilspreis' }
+        : { price: 23.80, full: 47.60, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('wien', 'attnang')) {
+      return op === 'WESTbahn'
+        ? { price: 30.50, full: 58.00, source: 'WESTbahn Vorteilspreis' }
+        : { price: 27.80, full: 55.60, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('wien', 'innsbruck')) {
+      return op === 'WESTbahn'
+        ? { price: 57.90, full: 105.00, source: 'WESTbahn Vorteilspreis' }
+        : { price: 44.80, full: 89.60, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('wien', 'bregenz')) {
+      return op === 'WESTbahn'
+        ? { price: 63.90, full: 112.00, source: 'WESTbahn Vorteilspreis' }
+        : { price: 49.90, full: 99.80, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('wien', 'graz')) {
+      return { price: 24.60, full: 49.20, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('wien', 'klagenfurt')) {
+      return { price: 35.50, full: 71.00, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('wien', 'villach')) {
+      return { price: 37.20, full: 74.40, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('salzburg', 'linz')) {
+      return op === 'WESTbahn'
+        ? { price: 17.50, full: 31.00, source: 'WESTbahn Vorteilspreis' }
+        : { price: 15.80, full: 31.60, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('salzburg', 'innsbruck')) {
+      return op === 'WESTbahn'
+        ? { price: 26.90, full: 51.00, source: 'WESTbahn Vorteilspreis' }
+        : { price: 26.50, full: 53.00, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('salzburg', 'bregenz')) {
+      return { price: 41.50, full: 83.00, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('bregenz', 'dornbirn')) {
+      return { price: 2.10, full: 4.20, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('bregenz', 'feldkirch')) {
+      return { price: 4.60, full: 9.20, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('bregenz', 'bludenz')) {
+      return { price: 6.60, full: 13.20, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('feldkirch', 'innsbruck')) {
+      return { price: 22.70, full: 45.40, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('dornbirn', 'innsbruck')) {
+      return { price: 24.50, full: 49.00, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('innsbruck', 'kufstein')) {
+      return op === 'WESTbahn'
+        ? { price: 12.20, full: 22.00, source: 'WESTbahn Vorteilspreis' }
+        : { price: 10.80, full: 21.60, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('graz', 'linz')) {
+      return { price: 25.50, full: 51.00, source: 'ÖBB Vorteilscard 66' };
+    }
+    if (has('graz', 'klagenfurt')) {
+      return { price: 17.80, full: 35.60, source: 'ÖBB Vorteilscard 66' };
     }
 
     if (originCoords && destCoords) {
       const dist = haversineDist(originCoords.lat, originCoords.lon, destCoords.lat, destCoords.lon);
       const railDist = Math.max(5.0, dist * 1.25);
-      let cost = 2.60;
-      if (railDist <= 50) cost += railDist * 0.23;
-      else if (railDist <= 150) cost += (50 * 0.23) + ((railDist - 50) * 0.20);
-      else if (railDist <= 300) cost += (50 * 0.23) + (100 * 0.20) + ((railDist - 150) * 0.16);
-      else cost += (50 * 0.23) + (100 * 0.20) + (150 * 0.16) + ((railDist - 300) * 0.13);
+      let cost = 2.40;
+      if (railDist <= 50) cost += railDist * 0.22;
+      else if (railDist <= 150) cost += (50 * 0.22) + ((railDist - 50) * 0.19);
+      else if (railDist <= 300) cost += (50 * 0.22) + (100 * 0.19) + ((railDist - 150) * 0.15);
+      else cost += (50 * 0.22) + (100 * 0.19) + (150 * 0.15) + ((railDist - 300) * 0.12);
 
       const fullPrice = Math.round(cost * 10) / 10;
       let vc66 = Math.max(2.40, Math.round(fullPrice * 0.5 * 10) / 10);
@@ -824,7 +884,7 @@
       return { price: vc66, full: fullPrice, source: `ÖBB VC66 (~${Math.round(dist)} km)` };
     }
 
-    return { price: 33.90, full: 67.80, source: 'Tarif' };
+    return { price: 21.30, full: 42.60, source: 'Tarif' };
   }
 
   function calculatePrice() {
@@ -905,12 +965,49 @@
       const hour = (startHour + offset) % 24;
       const hh = String(hour).padStart(2, '0');
 
-      if (isWestbahnCorridor) {
-        // Takt on Westbahn:
-        // :13 ICE (z.B. ICE 1212)
-        // :28 RJX (z.B. RJX 62)
-        // :38 WEST (z.B. WEST 968)
-        // :55 RJX (z.B. RJX 566)
+      const isLinz = (cleanName(from).includes('wien') && cleanName(to).includes('linz')) ||
+                     (cleanName(from).includes('linz') && cleanName(to).includes('wien'));
+
+      if (isLinz) {
+        // Wien <-> Linz (ca. 1h 15m)
+        list.push({
+          train: `ICE ${1200 + hour}`,
+          op: 'ÖBB',
+          dep: `${hh}:13`,
+          arr: `${String((hour + 1) % 24).padStart(2, '0')}:30`,
+          dur: '1h 17m',
+          price: fareOebb.price,
+          full: fareOebb.full
+        });
+        list.push({
+          train: `RJX ${60 + offset * 2}`,
+          op: 'ÖBB',
+          dep: `${hh}:28`,
+          arr: `${String((hour + 1) % 24).padStart(2, '0')}:44`,
+          dur: '1h 16m',
+          price: fareOebb.price,
+          full: fareOebb.full
+        });
+        list.push({
+          train: `WEST ${960 + hour}`,
+          op: 'WESTbahn',
+          dep: `${hh}:38`,
+          arr: `${String((hour + 1) % 24).padStart(2, '0')}:58`,
+          dur: '1h 20m',
+          price: fareWest.price,
+          full: fareWest.full
+        });
+        list.push({
+          train: `RJX ${560 + hour}`,
+          op: 'ÖBB',
+          dep: `${hh}:55`,
+          arr: `${String((hour + 2) % 24).padStart(2, '0')}:15`,
+          dur: '1h 20m',
+          price: fareOebb.price,
+          full: fareOebb.full
+        });
+      } else if (isWestbahnCorridor) {
+        // Wien <-> Salzburg (ca. 2h 25m - 2h 45m)
         list.push({
           train: `ICE ${1200 + hour}`,
           op: 'ÖBB',
