@@ -237,6 +237,7 @@
     }
     .train-badge.oebb { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
     .train-badge.west { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .train-badge.vvv { background: rgba(234, 179, 8, 0.2); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3); }
     .train-price-tag {
       font-size: 1.15rem;
       font-weight: 800;
@@ -297,6 +298,7 @@
     }
     .chip.oebb.active { background: var(--oebb); color: #fff; border-color: var(--oebb); }
     .chip.west.active { background: var(--west); color: #fff; border-color: var(--west); }
+    .chip.vvv.active { background: #eab308; color: #0b1120; border-color: #eab308; }
     .chip.wl.active { background: var(--wl); color: #fff; border-color: var(--wl); }
 
     /* Quick Presets for local transit */
@@ -501,8 +503,10 @@
 
     <!-- Quick Presets -->
     <div class="preset-chips">
+      <button type="button" class="preset-btn" onclick="applyPreset('VVV', 'Vorarlberg', 'Vorarlberg', 9.60)">+ VVV Landesweit (9,60 €)</button>
+      <button type="button" class="preset-btn" onclick="applyPreset('VVV', 'Vorarlberg 2 Zonen', 'Vorarlberg 2 Zonen', 4.60)">+ VVV 2 Zonen (4,60 €)</button>
+      <button type="button" class="preset-btn" onclick="applyPreset('VVV', 'Vorarlberg 1 Zone', 'Vorarlberg 1 Zone', 2.80)">+ VVV 1 Zone (2,80 €)</button>
       <button type="button" class="preset-btn" onclick="applyPreset('Wiener Linien', 'Wien Kernzone', 'Wien Kernzone', 2.40)">+ Wiener Linien (2,40 €)</button>
-      <button type="button" class="preset-btn" onclick="applyPreset('VVV', 'Vorarlberg', 'Vorarlberg', 4.40)">+ VVV Tag (4,40 €)</button>
       <button type="button" class="preset-btn" onclick="applyPreset('VOR', 'VOR Zone', 'VOR Zone', 2.40)">+ VOR Einzelfahrt (2,40 €)</button>
     </div>
 
@@ -561,6 +565,11 @@
         <input type="number" id="price" step="0.10" min="0" placeholder="0.00">
         <span class="currency-symbol">€</span>
       </div>
+    </div>
+    <div style="display: flex; justify-content: flex-end; margin-top: -10px; margin-bottom: 14px;">
+      <a id="liveShopLink" href="https://shop.oebbtickets.at" target="_blank" rel="noopener" style="font-size: 0.8rem; color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 4px;">
+        <span>Im ÖBB / VVV Ticketshop gegenprüfen</span> ↗
+      </a>
     </div>
 
     <!-- Notes -->
@@ -887,10 +896,59 @@
     return { price: 21.30, full: 42.60, source: 'Tarif' };
   }
 
+  function updatePriceTitle() {
+    const title = document.getElementById('priceTitle');
+    if (selectedOperator === 'ÖBB') {
+      title.textContent = 'ÖBB Vorteilscard 66';
+    } else if (selectedOperator === 'WESTbahn') {
+      title.textContent = 'WESTbahn Vorteilspreis';
+    } else if (selectedOperator === 'VVV') {
+      title.textContent = 'VVV Verbundtarif (Vorarlberg)';
+    } else if (selectedOperator === 'Wiener Linien') {
+      title.textContent = 'Wiener Linien Tarif';
+    } else {
+      title.textContent = 'Fahrpreis';
+    }
+  }
+
   function calculatePrice() {
     const from = document.getElementById('origin').value.trim();
     const to = document.getElementById('destination').value.trim();
     if (!from || !to) return;
+
+    // Update live shop check link
+    const shopLink = document.getElementById('liveShopLink');
+    if (shopLink) {
+      shopLink.href = `https://shop.oebbtickets.at/de/ticket?creq={"from":"${encodeURIComponent(from)}","to":"${encodeURIComponent(to)}"}`;
+    }
+
+    const c1 = cleanName(from);
+    const c2 = cleanName(to);
+
+    // Vorarlberg ÖPNV / Bus Regions (Bregenzerwald, etc.)
+    const vvvBusTowns = ['mellau', 'hirschau', 'bezau', 'egg', 'hittisau', 'andelsbuch', 'schoppernau', 'damüls', 'alberschwende', 'warth', 'schröcken', 'doren', 'sulzberg', 'krumbach', 'lingenau', 'schwarzenberg', 'reuthe', 'bizau', 'sibratsgfäll'];
+    const isVvvBusRoute = vvvBusTowns.some(k => c1.includes(k) || c2.includes(k));
+
+    if (isVvvBusRoute || selectedOperator === 'VVV') {
+      if (selectedOperator !== 'VVV') {
+        selectedOperator = 'VVV';
+        document.querySelectorAll('#operatorChips .chip').forEach(c => {
+          c.classList.toggle('active', c.dataset.op === 'VVV');
+        });
+        updatePriceTitle();
+      }
+
+      const rheintalTowns = ['dornbirn', 'bregenz', 'feldkirch', 'lustenau', 'hohenems', 'bludenz', 'wolfurt', 'lauterach', 'götzis', 'hard'];
+      const connectsRheintal = rheintalTowns.some(k => c1.includes(k) || c2.includes(k));
+
+      if (connectsRheintal) {
+        setPrice(9.60, 'VVV Maximo / Landesweit (Bregenzerwald ↔ Rheintal)');
+        return;
+      } else {
+        setPrice(4.60, 'VVV 2 Zonen (Regionalbus)');
+        return;
+      }
+    }
 
     if (selectedOperator === 'Wiener Linien') {
       setPrice(2.40, 'Wiener Linien Einzelfahrt');
@@ -898,10 +956,6 @@
     }
     if (selectedOperator === 'VOR') {
       setPrice(2.40, 'VOR Einzelfahrt');
-      return;
-    }
-    if (selectedOperator === 'VVV') {
-      setPrice(4.40, 'VVV Tagesticket');
       return;
     }
 
@@ -965,10 +1019,30 @@
       const hour = (startHour + offset) % 24;
       const hh = String(hour).padStart(2, '0');
 
-      const isLinz = (cleanName(from).includes('wien') && cleanName(to).includes('linz')) ||
-                     (cleanName(from).includes('linz') && cleanName(to).includes('wien'));
+      const vvvBusTowns = ['mellau', 'hirschau', 'bezau', 'egg', 'hittisau', 'andelsbuch', 'schoppernau', 'damüls', 'alberschwende', 'warth', 'schröcken', 'doren', 'sulzberg', 'krumbach', 'lingenau', 'schwarzenberg', 'reuthe', 'bizau', 'sibratsgfäll'];
+      const isVvvBusRoute = vvvBusTowns.some(k => cleanName(from).includes(k) || cleanName(to).includes(k));
 
-      if (isLinz) {
+      if (isVvvBusRoute) {
+        // VVV Landbus Bregenzerwald
+        list.push({
+          train: `Landbus 840 + 132`,
+          op: 'VVV',
+          dep: `${hh}:54`,
+          arr: `${String((hour + 1) % 24).padStart(2, '0')}:11`,
+          dur: '1h 17m (1 Umstieg)',
+          price: 9.60,
+          full: 9.60
+        });
+        list.push({
+          train: `Landbus 850 (Schnellbus)`,
+          op: 'VVV',
+          dep: `${hh}:24`,
+          arr: `${String((hour + 1) % 24).padStart(2, '0')}:20`,
+          dur: '56m',
+          price: 9.60,
+          full: 9.60
+        });
+      } else if (isLinz) {
         // Wien <-> Linz (ca. 1h 15m)
         list.push({
           train: `ICE ${1200 + hour}`,
@@ -1078,7 +1152,7 @@
     trains.forEach((t, idx) => {
       const card = document.createElement('div');
       card.className = 'train-card';
-      const badgeClass = t.op === 'WESTbahn' ? 'west' : 'oebb';
+      const badgeClass = t.op === 'WESTbahn' ? 'west' : (t.op === 'VVV' ? 'vvv' : 'oebb');
       const shopUrl = t.op === 'WESTbahn'
         ? 'https://westbahn.at'
         : `https://shop.oebbtickets.at/de/ticket?creq={"from":"${encodeURIComponent(from)}","to":"${encodeURIComponent(to)}","datetime":"${dateStr}T${t.dep}:00"}`;
@@ -1095,7 +1169,7 @@
           <span style="font-size: 0.78rem; font-weight: normal; color: var(--text-muted); margin-left: auto;">(${t.dur})</span>
         </div>
         <div class="train-meta">
-          <span>Standard mit Vorteilskarte</span>
+          <span>${t.op === 'VVV' ? 'VVV Verbundtarif' : 'Standard mit Vorteilskarte'}</span>
           <a href="${shopUrl}" target="_blank" rel="noopener" class="shop-link" onclick="event.stopPropagation()">Ticketshop ↗</a>
         </div>
       `;
